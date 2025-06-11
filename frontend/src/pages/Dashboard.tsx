@@ -1,130 +1,60 @@
 import React from 'react';
 import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
+  Row,
+  Col,
   Card,
-  CardContent,
+  Statistic,
+  Progress,
+  Table,
+  Tag,
   Alert,
-  CircularProgress,
+  Typography,
   List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Chip,
-  LinearProgress,
+  Avatar,
+  Space,
   Divider,
-} from '@mui/material';
+  Badge,
+  Spin,
+} from 'antd';
 import {
-  TrendingUp,
-  TrendingDown,
-  Warning,
-  People,
-  Assessment,
-  AttachMoney,
-  NotificationImportant,
-  CheckCircle,
-  Lightbulb,
-} from '@mui/icons-material';
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  TeamOutlined,
+  AlertOutlined,
+  DollarOutlined,
+  TrophyOutlined,
+  UserOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons';
 import { useQuery } from 'react-query';
+import { Column } from '@ant-design/charts';
 import { apiService, DashboardStats, Customer, Alert as AlertType } from '../services/api';
-import { getHealthColor, getSeverityColor, getTrendIcon } from '../services/api';
 
-// Stat Card Component
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: React.ReactElement;
-  color: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success';
-}
+const { Title, Text } = Typography;
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
-  <Card>
-    <CardContent>
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Box>
-          <Typography color="textSecondary" gutterBottom variant="body2">
-            {title}
-          </Typography>
-          <Typography variant="h4">
-            {value}
-          </Typography>
-        </Box>
-        <Box color={`${color}.main`}>
-          {icon}
-        </Box>
-      </Box>
-    </CardContent>
-  </Card>
-);
+// Health Score Progress Component
+const HealthScoreProgress = ({ score }: { score: number }) => {
+  const percentage = Math.round(score * 100);
+  let status: 'success' | 'normal' | 'exception' = 'normal';
+  
+  if (percentage >= 70) status = 'success';
+  else if (percentage < 30) status = 'exception';
+  
+  return <Progress percent={percentage} status={status} size="small" />;
+};
 
-// Recent Alerts Component
-const RecentAlerts: React.FC<{ alerts: AlertType[] }> = ({ alerts }) => (
-  <Paper sx={{ p: 2 }}>
-    <Typography variant="h6" gutterBottom>
-      Recent Critical Alerts
-    </Typography>
-    {alerts.slice(0, 5).map((alert, index) => (
-      <Alert 
-        key={index} 
-        severity={alert.severity === 'critical' ? 'error' : alert.severity === 'medium' ? 'warning' : 'info'}
-        sx={{ mb: 1 }}
-      >
-        <Typography variant="body2">
-          <strong>{alert.customer_name}</strong>: {alert.message}
-        </Typography>
-      </Alert>
-    ))}
-  </Paper>
-);
-
-// At-Risk Customers Component
-const AtRiskCustomers: React.FC<{ customers: Customer[] }> = ({ customers }) => {
-  const criticalCustomers = customers
-    .filter(c => c.health_score < 0.3)
-    .sort((a, b) => a.health_score - b.health_score)
-    .slice(0, 5);
-
-  return (
-    <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Customers at High Risk
-      </Typography>
-      {criticalCustomers.map((customer) => (
-        <Box key={customer.id} sx={{ mb: 2, p: 1, border: '1px solid #f0f0f0', borderRadius: 1 }}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            {customer.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Health Score: {(customer.health_score * 100).toFixed(0)}% • 
-            MRR: ${customer.mrr.toLocaleString()} • 
-            Last Login: {customer.last_login_days} days ago
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-            <Box
-              sx={{
-                width: '100%',
-                height: 8,
-                backgroundColor: '#f0f0f0',
-                borderRadius: 4,
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  width: `${customer.health_score * 100}%`,
-                  height: '100%',
-                  backgroundColor: customer.health_score < 0.3 ? '#f44336' : 
-                                   customer.health_score < 0.6 ? '#ff9800' : '#4caf50',
-                }}
-              />
-            </Box>
-          </Box>
-        </Box>
-      ))}
-    </Paper>
-  );
+// Severity Tag Component
+const SeverityTag = ({ severity }: { severity: string }) => {
+  const colors = {
+    critical: 'red',
+    high: 'orange',
+    medium: 'yellow',
+    low: 'green',
+  };
+  
+  return <Tag color={colors[severity as keyof typeof colors]}>{severity.toUpperCase()}</Tag>;
 };
 
 const Dashboard: React.FC = () => {
@@ -138,7 +68,7 @@ const Dashboard: React.FC = () => {
     apiService.getAlerts
   );
 
-  const { data: customers } = useQuery(
+  const { data: customers, isLoading: customersLoading } = useQuery(
     'customers',
     apiService.getCustomers
   );
@@ -148,315 +78,308 @@ const Dashboard: React.FC = () => {
     apiService.getHealthTrends
   );
 
-  if (statsLoading || alertsLoading) {
-    return <Box>Loading...</Box>;
+  if (statsLoading || alertsLoading || customersLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
-  const recentAlerts = alerts?.slice(0, 6) || [];
-  const atRiskCustomers = customers?.filter(c => c.health_score < 0.6) || [];
-  const topTrends = trends?.slice(0, 5) || [];
+  // Process data for charts
+  const healthDistribution = [
+    { range: 'Excellent (80-100%)', count: customers?.filter(c => c.health_score >= 0.8).length || 0 },
+    { range: 'Good (60-80%)', count: customers?.filter(c => c.health_score >= 0.6 && c.health_score < 0.8).length || 0 },
+    { range: 'At Risk (30-60%)', count: customers?.filter(c => c.health_score >= 0.3 && c.health_score < 0.6).length || 0 },
+    { range: 'Critical (<30%)', count: customers?.filter(c => c.health_score < 0.3).length || 0 },
+  ];
+
+  // Recent alerts table columns
+  const alertColumns = [
+    {
+      title: 'Customer',
+      dataIndex: 'customer_name',
+      key: 'customer_name',
+      render: (name: string) => (
+        <Space>
+          <Avatar size="small" icon={<UserOutlined />} />
+          <Text strong>{name}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Alert Type',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => <Tag>{type.replace('_', ' ').toUpperCase()}</Tag>,
+    },
+    {
+      title: 'Severity',
+      dataIndex: 'severity',
+      key: 'severity',
+      render: (severity: string) => <SeverityTag severity={severity} />,
+    },
+    {
+      title: 'Message',
+      dataIndex: 'message',
+      key: 'message',
+      ellipsis: true,
+    },
+  ];
+
+  // At-risk customers table columns
+  const riskColumns = [
+    {
+      title: 'Customer',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name: string) => (
+        <Space>
+          <Avatar size="small" icon={<UserOutlined />} />
+          <Text strong>{name}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Health Score',
+      dataIndex: 'health_score',
+      key: 'health_score',
+      render: (score: number) => <HealthScoreProgress score={score} />,
+      sorter: (a: Customer, b: Customer) => a.health_score - b.health_score,
+    },
+    {
+      title: 'MRR',
+      dataIndex: 'mrr',
+      key: 'mrr',
+      render: (mrr: number) => `$${mrr.toLocaleString()}`,
+      sorter: (a: Customer, b: Customer) => a.mrr - b.mrr,
+    },
+    {
+      title: 'Last Login',
+      dataIndex: 'last_login_days',
+      key: 'last_login_days',
+      render: (days: number) => (
+        <Tag color={days > 14 ? 'red' : days > 7 ? 'orange' : 'green'}>
+          {days} days ago
+        </Tag>
+      ),
+    },
+  ];
+
+  const recentAlerts = alerts?.slice(0, 5) || [];
+  const atRiskCustomers = customers?.filter(c => c.health_score < 0.6).slice(0, 5) || [];
+  const totalMrr = customers?.reduce((sum, c) => sum + c.mrr, 0) || 0;
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
+    <div>
+      <Title level={2} style={{ marginBottom: 24 }}>
         Customer Success Dashboard
-      </Typography>
+      </Title>
       
-      {/* Enhanced Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      {/* Key Performance Indicators */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <People fontSize="large" color="primary" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="h6">
-                    Total Customers
-                  </Typography>
-                  <Typography variant="h4">{stats?.total_customers}</Typography>
-                  <Typography variant="body2" color="success.main">
-                    Avg Health: {stats?.average_health_score}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+            <Statistic
+              title="Total Customers"
+              value={stats?.total_customers || 0}
+              prefix={<TeamOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
           </Card>
-        </Grid>
+        </Col>
+        
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Critical Alerts"
+              value={stats?.critical_alerts || 0}
+              prefix={<AlertOutlined />}
+              valueStyle={{ color: '#ff4d4f' }}
+              suffix={
+                <Badge 
+                  count={`/${stats?.total_alerts || 0}`} 
+                  style={{ backgroundColor: '#52c41a' }}
+                />
+              }
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Monthly Recurring Revenue"
+              value={totalMrr}
+              prefix={<DollarOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+              formatter={(value) => `$${Number(value).toLocaleString()}`}
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Average Health Score"
+              value={stats?.average_health_score ? parseFloat(stats.average_health_score) * 100 : 0}
+              prefix={<TrophyOutlined />}
+              suffix="%"
+              precision={1}
+              valueStyle={{ 
+                color: (stats?.average_health_score ? parseFloat(stats.average_health_score) : 0) > 0.7 ? '#52c41a' : '#faad14' 
+              }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <NotificationImportant fontSize="large" color="error" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="h6">
-                    Critical Alerts
-                  </Typography>
-                  <Typography variant="h4">{stats?.critical_alerts}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {stats?.total_alerts} total alerts
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+      {/* Health Distribution Chart */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="Customer Health Distribution" extra={<TrophyOutlined />}>
+            <Column
+              data={healthDistribution}
+              xField="range"
+              yField="count"
+              columnStyle={{
+                fill: ({ range }) => {
+                  if (range.includes('Excellent')) return '#52c41a';
+                  if (range.includes('Good')) return '#1890ff';
+                  if (range.includes('At Risk')) return '#faad14';
+                  return '#ff4d4f';
+                },
+              }}
+              label={{
+                position: 'top',
+                style: { fill: '#000', fontSize: 12 },
+              }}
+            />
           </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <TrendingUp fontSize="large" color="success" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="h6">
-                    Expansion Ready
-                  </Typography>
-                  <Typography variant="h4">{stats?.expansion_opportunities}</Typography>
-                  <Typography variant="body2" color="success.main">
-                    High-health customers
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+        </Col>
+        
+        <Col xs={24} lg={12}>
+          <Card title="System Health Overview" extra={<CheckCircleOutlined />}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="Healthy Customers"
+                    value={customers?.filter(c => c.health_score >= 0.7).length || 0}
+                    valueStyle={{ color: '#52c41a' }}
+                    prefix={<CheckCircleOutlined />}
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="At Risk"
+                    value={customers?.filter(c => c.health_score < 0.6).length || 0}
+                    valueStyle={{ color: '#faad14' }}
+                    prefix={<ExclamationCircleOutlined />}
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="Critical Risk"
+                    value={customers?.filter(c => c.health_score < 0.3).length || 0}
+                    valueStyle={{ color: '#ff4d4f' }}
+                    prefix={<AlertOutlined />}
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="Revenue at Risk"
+                    value={customers?.filter(c => c.health_score < 0.6).reduce((sum, c) => sum + c.mrr, 0) || 0}
+                    valueStyle={{ color: '#ff4d4f' }}
+                    prefix={<DollarOutlined />}
+                    formatter={(value) => `$${Number(value).toLocaleString()}`}
+                  />
+                </Card>
+              </Col>
+            </Row>
           </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <AttachMoney fontSize="large" color="warning" sx={{ mr: 2 }} />
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="h6">
-                    Payment Issues
-                  </Typography>
-                  <Typography variant="h4">{stats?.payment_issues}</Typography>
-                  <Typography variant="body2" color="warning.main">
-                    Need attention
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Customer Segmentation */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                <Assessment fontSize="large" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Customer Segments
-              </Typography>
-              <Box>
-                {stats?.customer_segments && Object.entries(stats.customer_segments).map(([label, count]) => (
-                  <Box key={label} sx={{ mb: 2 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body1">{label}</Typography>
-                      <Chip label={String(count)} size="small" />
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(Number(count) / (stats?.total_customers || 1)) * 100}
-                      sx={{ mt: 1, height: 8, borderRadius: 4 }}
-                    />
-                  </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Health Trends */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                <TrendingUp fontSize="large" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Health Trends (Bottom 5)
-              </Typography>
-              <List dense>
-                {topTrends.map((trend) => (
-                  <ListItem key={trend.customer_id} divider>
-                    <ListItemIcon>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          backgroundColor: getHealthColor(trend.current_health),
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={trend.customer_name}
-                      secondary={
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="caption">
-                            Health: {Math.round(trend.current_health * 100)}%
-                          </Typography>
-                          <Typography variant="caption">
-                            {getTrendIcon(trend.trend.trend)} {trend.trend.trend}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
       {/* Recent Alerts and At-Risk Customers */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                <Warning fontSize="large" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Recent Critical Alerts
-              </Typography>
-              <List>
-                {recentAlerts.map((alert, index) => (
-                  <ListItem key={index} divider>
-                    <ListItemIcon>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          backgroundColor: getSeverityColor(alert.severity),
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={alert.customer_name}
-                      secondary={
-                        <Box>
-                          <Typography variant="caption" display="block">
-                            {alert.message}
-                          </Typography>
-                          <Chip
-                            label={alert.type.replace('_', ' ')}
-                            size="small"
-                            sx={{ mt: 0.5 }}
-                            color={
-                              alert.severity === 'critical'
-                                ? 'error'
-                                : alert.severity === 'medium'
-                                ? 'warning'
-                                : 'success'
-                            }
-                          />
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14}>
+          <Card 
+            title="Recent Critical Alerts" 
+            extra={<Badge count={recentAlerts.length} style={{ backgroundColor: '#ff4d4f' }} />}
+          >
+            <Table
+              dataSource={recentAlerts}
+              columns={alertColumns}
+              pagination={false}
+              size="small"
+              rowKey={(record, index) => index || 0}
+            />
           </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                <Lightbulb fontSize="large" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Customers Needing Attention
-              </Typography>
-              <List>
-                {atRiskCustomers.slice(0, 6).map((customer) => (
-                  <ListItem key={customer.id} divider>
-                    <ListItemIcon>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          backgroundColor: getHealthColor(customer.health_score),
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={customer.name}
-                      secondary={
-                        <Box>
-                          <Typography variant="caption" display="block">
-                            Health Score: {Math.round(customer.health_score * 100)}%
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {customer.customer_label}
-                          </Typography>
-                          {customer.payment_status && customer.payment_status !== 'current' && (
-                            <Chip
-                              label={`Payment: ${customer.payment_status}`}
-                              size="small"
-                              color="error"
-                              sx={{ mt: 0.5, ml: 1 }}
-                            />
-                          )}
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
+        </Col>
+        
+        <Col xs={24} lg={10}>
+          <Card 
+            title="Customers Requiring Attention"
+            extra={<ExclamationCircleOutlined style={{ color: '#faad14' }} />}
+          >
+            <Table
+              dataSource={atRiskCustomers}
+              columns={riskColumns}
+              pagination={false}
+              size="small"
+              rowKey="id"
+            />
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
-      {/* Health Distribution */}
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Customer Health Distribution
-            </Typography>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={4}>
-                <Box textAlign="center">
-                  <CheckCircle fontSize="large" sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
-                  <Typography variant="h4" color="success.main">
-                    {stats?.healthy_customers}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Healthy (60%+)
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box textAlign="center">
-                  <Warning fontSize="large" sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
-                  <Typography variant="h4" color="warning.main">
-                    {stats?.medium_risk_customers}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    At Risk (30-60%)
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box textAlign="center">
-                  <NotificationImportant fontSize="large" sx={{ fontSize: 40, color: 'error.main', mb: 1 }} />
-                  <Typography variant="h4" color="error.main">
-                    {(stats?.total_customers || 0) - (stats?.healthy_customers || 0) - (stats?.medium_risk_customers || 0)}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Critical (&lt;30%)
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+      {/* Action Items */}
+      <Row style={{ marginTop: 24 }}>
+        <Col span={24}>
+          <Card title="Recommended Actions" extra={<ClockCircleOutlined />}>
+            <List
+              dataSource={[
+                {
+                  title: 'Schedule urgent calls with critical risk customers',
+                  description: `${customers?.filter(c => c.health_score < 0.3).length || 0} customers need immediate attention`,
+                  priority: 'high',
+                },
+                {
+                  title: 'Review customers with declining usage',
+                  description: 'Proactive outreach to prevent churn',
+                  priority: 'medium',
+                },
+                {
+                  title: 'Analyze support ticket trends',
+                  description: 'Identify common issues affecting customer health',
+                  priority: 'low',
+                },
+              ]}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={
+                      <Badge 
+                        status={item.priority === 'high' ? 'error' : item.priority === 'medium' ? 'warning' : 'processing'} 
+                      />
+                    }
+                    title={item.title}
+                    description={item.description}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { ConfigProvider, theme as antTheme } from 'antd';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
+import 'antd/dist/reset.css';
 
 // Components
 import Layout from './components/Layout';
@@ -11,20 +11,29 @@ import Dashboard from './pages/Dashboard';
 import CustomerList from './pages/CustomerList';
 import AlertsPage from './pages/AlertsPage';
 
-// Create theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
+// Ant Design theme configuration
+const customTheme = {
+  algorithm: antTheme.defaultAlgorithm,
+  token: {
+    colorPrimary: '#1890ff',
+    colorSuccess: '#52c41a',
+    colorWarning: '#faad14',
+    colorError: '#ff4d4f',
+    borderRadius: 6,
+    fontSize: 14,
+  },
+  components: {
+    Layout: {
+      bodyBg: '#f0f2f5',
+      siderBg: '#001529',
+      headerBg: '#fff',
     },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
+    Menu: {
+      darkItemBg: '#001529',
+      darkItemSelectedBg: '#1890ff',
     },
   },
-});
+};
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -39,8 +48,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      <ConfigProvider theme={customTheme}>
         <Router>
           <Layout>
             <Routes>
@@ -51,7 +59,7 @@ function App() {
           </Layout>
         </Router>
         <Toaster position="top-right" />
-      </ThemeProvider>
+      </ConfigProvider>
     </QueryClientProvider>
   );
 }

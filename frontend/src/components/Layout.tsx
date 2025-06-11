@@ -1,155 +1,175 @@
 import React, { useState } from 'react';
+import { Layout as AntLayout, Menu, Avatar, Dropdown, Badge, Space, Typography } from 'antd';
 import {
-  AppBar,
-  Box,
-  CssBaseline,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
-  Typography,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard as DashboardIcon,
-  People as PeopleIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material';
+  DashboardOutlined,
+  TeamOutlined,
+  AlertOutlined,
+  BellOutlined,
+  UserOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import type { MenuProps } from 'antd';
 
-const drawerWidth = 240;
+const { Header, Sider, Content } = AntLayout;
+const { Title } = Typography;
 
 interface Props {
   children: React.ReactNode;
 }
 
 interface NavigationItem {
-  text: string;
+  key: string;
   icon: React.ReactElement;
+  label: string;
   path: string;
 }
 
 const navigationItems: NavigationItem[] = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
-  { text: 'Alerts', icon: <WarningIcon />, path: '/alerts' },
+  { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard', path: '/' },
+  { key: 'customers', icon: <TeamOutlined />, label: 'Customers', path: '/customers' },
+  { key: 'alerts', icon: <AlertOutlined />, label: 'Alerts', path: '/alerts' },
 ];
 
 export default function Layout({ children }: Props) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+  // Get current selected key based on path
+  const getCurrentKey = () => {
+    const currentItem = navigationItems.find(item => item.path === location.pathname);
+    return currentItem ? currentItem.key : 'dashboard';
   };
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    setMobileOpen(false); // Close mobile drawer after navigation
+  const handleMenuClick: MenuProps['onClick'] = (e) => {
+    const item = navigationItems.find(nav => nav.key === e.key);
+    if (item) {
+      navigate(item.path);
+    }
   };
 
-  const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          CS Copilot
-        </Typography>
-      </Toolbar>
-      <List>
-        {navigationItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </div>
-  );
+  // User dropdown menu
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Profile',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      danger: true,
+    },
+  ];
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+    <AntLayout style={{ minHeight: '100vh' }}>
+      <Sider 
+        trigger={null} 
+        collapsible 
+        collapsed={collapsed}
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Customer Success Copilot
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        aria-label="mailbox folders"
-      >
-        {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
+        <div 
+          style={{ 
+            height: 32, 
+            margin: 16, 
+            textAlign: 'center',
+            color: '#fff',
+            fontSize: collapsed ? 14 : 18,
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {drawer}
-        </Drawer>
-        {/* Desktop drawer */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
+          {collapsed ? 'CS' : 'CS Copilot'}
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[getCurrentKey()]}
+          items={navigationItems.map(item => ({
+            key: item.key,
+            icon: item.icon,
+            label: item.label,
+          }))}
+          onClick={handleMenuClick}
+        />
+      </Sider>
+      
+      <AntLayout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
+        <Header 
+          style={{ 
+            padding: '0 24px', 
+            background: '#fff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f0f0f0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
           }}
-          open
         >
-          {drawer}
-        </Drawer>
-      </Box>
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-        }}
-      >
-        <Toolbar />
-        {children}
-      </Box>
-    </Box>
+          <Space align="center">
+            <div
+              style={{ fontSize: 18, cursor: 'pointer' }}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </div>
+            <Title level={4} style={{ margin: 0, color: '#001529' }}>
+              Customer Success Copilot
+            </Title>
+          </Space>
+          
+          <Space align="center" size="middle">
+            <Badge count={5} size="small">
+              <BellOutlined style={{ fontSize: 18, cursor: 'pointer' }} />
+            </Badge>
+            
+            <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar size="small" icon={<UserOutlined />} />
+                <span>Admin User</span>
+              </Space>
+            </Dropdown>
+          </Space>
+        </Header>
+        
+        <Content 
+          style={{ 
+            margin: '24px 24px 0', 
+            overflow: 'initial',
+            minHeight: 'calc(100vh - 112px)',
+          }}
+        >
+          <div style={{ padding: 24, background: '#fff', borderRadius: 6 }}>
+            {children}
+          </div>
+        </Content>
+      </AntLayout>
+    </AntLayout>
   );
 } 
