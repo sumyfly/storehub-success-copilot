@@ -14,6 +14,24 @@ class Customer(BaseModel):
     health_score: Optional[float] = Field(
         None, ge=0, le=1, description="Calculated health score"
     )
+    customer_type: Optional[str] = Field(
+        None, description="Customer type: enterprise, mid_market, startup"
+    )
+    payment_status: Optional[str] = Field(
+        None, description="Payment status: current, late, overdue"
+    )
+    engagement_score: Optional[float] = Field(
+        None, ge=0, le=1, description="Engagement score"
+    )
+    onboarding_completed: Optional[bool] = Field(
+        None, description="Whether onboarding is completed"
+    )
+    nps_score: Optional[int] = Field(
+        None, ge=0, le=10, description="Net Promoter Score"
+    )
+    customer_label: Optional[str] = Field(
+        None, description="Intelligent customer label"
+    )
 
 
 class Alert(BaseModel):
