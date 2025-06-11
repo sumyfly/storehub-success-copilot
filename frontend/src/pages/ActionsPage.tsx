@@ -346,11 +346,13 @@ const ActionsPage: React.FC = () => {
             dataSource={filterActions(dashboardData.top_actions_today)}
             renderItem={(action: any) => (
               <List.Item style={{ padding: 0 }}>
-                <ActionCard
-                  action={action}
-                  onExecute={handleExecuteAction}
-                  onViewDetails={handleViewDetails}
-                />
+                <div style={{ width: '100%' }}>
+                  <ActionCard
+                    action={action}
+                    onExecute={handleExecuteAction}
+                    onViewDetails={handleViewDetails}
+                  />
+                </div>
               </List.Item>
             )}
           />
@@ -380,11 +382,13 @@ const ActionsPage: React.FC = () => {
             dataSource={filterActions(dashboardData.by_urgency.critical)}
             renderItem={(action: any) => (
               <List.Item style={{ padding: 0 }}>
-                <ActionCard
-                  action={action}
-                  onExecute={handleExecuteAction}
-                  onViewDetails={handleViewDetails}
-                />
+                <div style={{ width: '100%' }}>
+                  <ActionCard
+                    action={action}
+                    onExecute={handleExecuteAction}
+                    onViewDetails={handleViewDetails}
+                  />
+                </div>
               </List.Item>
             )}
           />
@@ -405,11 +409,13 @@ const ActionsPage: React.FC = () => {
             dataSource={filterActions(dashboardData.by_urgency.high)}
             renderItem={(action: any) => (
               <List.Item style={{ padding: 0 }}>
-                <ActionCard
-                  action={action}
-                  onExecute={handleExecuteAction}
-                  onViewDetails={handleViewDetails}
-                />
+                <div style={{ width: '100%' }}>
+                  <ActionCard
+                    action={action}
+                    onExecute={handleExecuteAction}
+                    onViewDetails={handleViewDetails}
+                  />
+                </div>
               </List.Item>
             )}
           />
@@ -430,11 +436,13 @@ const ActionsPage: React.FC = () => {
             dataSource={filterActions(dashboardData.by_urgency.medium)}
             renderItem={(action: any) => (
               <List.Item style={{ padding: 0 }}>
-                <ActionCard
-                  action={action}
-                  onExecute={handleExecuteAction}
-                  onViewDetails={handleViewDetails}
-                />
+                <div style={{ width: '100%' }}>
+                  <ActionCard
+                    action={action}
+                    onExecute={handleExecuteAction}
+                    onViewDetails={handleViewDetails}
+                  />
+                </div>
               </List.Item>
             )}
           />

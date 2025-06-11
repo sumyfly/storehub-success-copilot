@@ -15,6 +15,7 @@ import {
   Divider,
   Badge,
   Spin,
+  Button,
 } from 'antd';
 import {
   ArrowUpOutlined,
@@ -180,11 +181,11 @@ const Dashboard: React.FC = () => {
   const totalMrr = customers?.reduce((sum, c) => sum + c.mrr, 0) || 0;
 
   return (
-    <div>
+    <div style={{ padding: '8px' }}>
       <Title level={2} style={{ marginBottom: 24 }}>
         Customer Success Dashboard
       </Title>
-      
+     
       {/* Key Performance Indicators */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} md={6}>
@@ -214,7 +215,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        
+
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
@@ -226,7 +227,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        
+
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
@@ -266,7 +267,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        
+
         <Col xs={24} lg={12}>
           <Card title="System Health Overview" extra={<CheckCircleOutlined />}>
             <Row gutter={[16, 16]}>
@@ -332,7 +333,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-        
+
         <Col xs={24} lg={10}>
           <Card 
             title="Customers Requiring Attention"

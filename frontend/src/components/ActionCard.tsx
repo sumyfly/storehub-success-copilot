@@ -131,6 +131,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
       actions={cardActions}
       style={{ 
         marginBottom: 16,
+        width: '100%',
         borderLeft: `4px solid ${urgencyConfig.color === 'red' ? '#f5222d' : urgencyConfig.color === 'orange' ? '#fa8c16' : '#1890ff'}`
       }}
       size={compact ? "small" : "default"}
