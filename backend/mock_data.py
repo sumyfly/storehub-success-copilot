@@ -17,6 +17,25 @@ MOCK_CUSTOMERS = [
         "industry": "manufacturing",
         "company_size": "large",
         "nps_score": 3,
+        # Hour 6: Customer Journey Analytics
+        "lifecycle_stage": "at_risk",
+        "days_in_stage": 45,
+        "previous_stage": "mature",
+        "time_to_value_days": 180,
+        "journey_velocity": -0.4,
+        # Hour 6: Predictive Risk Modeling
+        "churn_probability_30d": 0.85,
+        "churn_probability_60d": 0.92,
+        "churn_probability_90d": 0.96,
+        "risk_factors": ["payment_overdue", "low_usage", "high_support_load"],
+        "risk_trend": "increasing",
+        # Hour 6: Revenue Intelligence
+        "expansion_score": 0.15,
+        "upsell_readiness": 0.1,
+        "cross_sell_potential": [],
+        "revenue_growth_trend": -0.25,
+        "contract_renewal_probability": 0.20,
+        "ltv_prediction": 8500,
     },
     {
         "id": 2,
@@ -35,6 +54,25 @@ MOCK_CUSTOMERS = [
         "industry": "technology",
         "company_size": "medium",
         "nps_score": 6,
+        # Hour 6: Customer Journey Analytics
+        "lifecycle_stage": "adoption",
+        "days_in_stage": 90,
+        "previous_stage": "onboarding",
+        "time_to_value_days": 75,
+        "journey_velocity": 0.1,
+        # Hour 6: Predictive Risk Modeling
+        "churn_probability_30d": 0.35,
+        "churn_probability_60d": 0.45,
+        "churn_probability_90d": 0.55,
+        "risk_factors": ["declining_engagement", "moderate_usage"],
+        "risk_trend": "stable",
+        # Hour 6: Revenue Intelligence
+        "expansion_score": 0.45,
+        "upsell_readiness": 0.3,
+        "cross_sell_potential": ["training", "integrations"],
+        "revenue_growth_trend": 0.05,
+        "contract_renewal_probability": 0.65,
+        "ltv_prediction": 18000,
     },
     {
         "id": 3,
@@ -53,6 +91,25 @@ MOCK_CUSTOMERS = [
         "industry": "technology",
         "company_size": "large",
         "nps_score": 9,
+        # Hour 6: Customer Journey Analytics
+        "lifecycle_stage": "growth",
+        "days_in_stage": 120,
+        "previous_stage": "adoption",
+        "time_to_value_days": 45,
+        "journey_velocity": 0.3,
+        # Hour 6: Predictive Risk Modeling
+        "churn_probability_30d": 0.05,
+        "churn_probability_60d": 0.08,
+        "churn_probability_90d": 0.12,
+        "risk_factors": [],
+        "risk_trend": "stable",
+        # Hour 6: Revenue Intelligence
+        "expansion_score": 0.85,
+        "upsell_readiness": 0.9,
+        "cross_sell_potential": ["analytics", "api", "premium_support"],
+        "revenue_growth_trend": 0.15,
+        "contract_renewal_probability": 0.95,
+        "ltv_prediction": 45000,
     },
     {
         "id": 4,

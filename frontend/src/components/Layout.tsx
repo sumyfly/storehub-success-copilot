@@ -11,6 +11,8 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  CheckCircleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -34,6 +36,7 @@ const navigationItems: NavigationItem[] = [
   { key: 'customers', icon: <TeamOutlined />, label: 'Customers', path: '/customers' },
   { key: 'alerts', icon: <AlertOutlined />, label: 'Alerts', path: '/alerts' },
   { key: 'actions', icon: <ThunderboltOutlined />, label: 'Actions', path: '/actions' },
+  { key: 'analytics', icon: <BarChartOutlined />, label: 'Analytics', path: '/analytics' },
 ];
 
 export default function Layout({ children }: Props) {

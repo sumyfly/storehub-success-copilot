@@ -947,3 +947,284 @@ async def get_comprehensive_analytics_report():
         },
         "recommendations_summary": optimization_recs["recommendations"],
     }
+
+
+# ===============================
+# HOUR 6: ADVANCED ANALYTICS APIs
+# ===============================
+
+
+@app.get("/analytics/customer-journey")
+async def get_customer_journey_analytics():
+    """Customer Journey Analytics - Lifecycle stages and progression"""
+    customers_with_health = []
+
+    # Process all customers with journey data
+    for customer_data in MOCK_CUSTOMERS:
+        health_score = calculate_health_score(customer_data)
+        customer_with_health = {**customer_data, "health_score": health_score}
+        customers_with_health.append(customer_with_health)
+
+    # Analyze journey stages
+    stage_distribution = {}
+    stage_performance = {}
+
+    for customer in customers_with_health:
+        stage = customer.get("lifecycle_stage", "unknown")
+
+        # Count stage distribution
+        stage_distribution[stage] = stage_distribution.get(stage, 0) + 1
+
+        # Calculate stage performance metrics
+        if stage not in stage_performance:
+            stage_performance[stage] = {
+                "customers": [],
+                "avg_health": 0,
+                "avg_days_in_stage": 0,
+                "avg_time_to_value": 0,
+                "expansion_potential": 0,
+            }
+
+        stage_performance[stage]["customers"].append(
+            {
+                "id": customer["id"],
+                "name": customer["name"],
+                "health_score": customer["health_score"],
+                "days_in_stage": customer.get("days_in_stage", 0),
+                "journey_velocity": customer.get("journey_velocity", 0),
+                "expansion_score": customer.get("expansion_score", 0),
+            }
+        )
+
+    # Calculate averages for each stage
+    for stage, data in stage_performance.items():
+        customers = data["customers"]
+        if customers:
+            data["avg_health"] = round(
+                sum(c["health_score"] for c in customers) / len(customers), 2
+            )
+            data["avg_days_in_stage"] = round(
+                sum(c["days_in_stage"] for c in customers) / len(customers), 1
+            )
+            data["expansion_potential"] = round(
+                sum(c["expansion_score"] for c in customers) / len(customers), 2
+            )
+
+    return {
+        "stage_distribution": stage_distribution,
+        "stage_performance": stage_performance,
+        "journey_insights": {
+            "total_customers": len(customers_with_health),
+            "fastest_time_to_value": min(
+                (c.get("time_to_value_days", 999) for c in customers_with_health),
+                default=0,
+            ),
+            "slowest_time_to_value": max(
+                (c.get("time_to_value_days", 0) for c in customers_with_health),
+                default=0,
+            ),
+            "avg_time_to_value": round(
+                sum(c.get("time_to_value_days", 0) for c in customers_with_health)
+                / len(customers_with_health),
+                1,
+            ),
+        },
+    }
+
+
+@app.get("/analytics/risk-prediction")
+async def get_risk_prediction_analytics():
+    """Predictive Risk Modeling - Advanced churn probability analysis"""
+    customers_with_health = []
+
+    for customer_data in MOCK_CUSTOMERS:
+        health_score = calculate_health_score(customer_data)
+        customer_with_health = {**customer_data, "health_score": health_score}
+        customers_with_health.append(customer_with_health)
+
+    # Risk distribution analysis
+    risk_buckets = {
+        "critical_30d": [],  # >70% churn risk in 30 days
+        "high_60d": [],  # >50% churn risk in 60 days
+        "medium_90d": [],  # >30% churn risk in 90 days
+        "low_risk": [],  # <30% churn risk
+    }
+
+    for customer in customers_with_health:
+        churn_30d = customer.get("churn_probability_30d", 0)
+        churn_60d = customer.get("churn_probability_60d", 0)
+        churn_90d = customer.get("churn_probability_90d", 0)
+
+        customer_risk_data = {
+            "id": customer["id"],
+            "name": customer["name"],
+            "mrr": customer["mrr"],
+            "churn_30d": churn_30d,
+            "churn_60d": churn_60d,
+            "churn_90d": churn_90d,
+            "risk_factors": customer.get("risk_factors", []),
+            "risk_trend": customer.get("risk_trend", "stable"),
+        }
+
+        if churn_30d > 0.7:
+            risk_buckets["critical_30d"].append(customer_risk_data)
+        elif churn_60d > 0.5:
+            risk_buckets["high_60d"].append(customer_risk_data)
+        elif churn_90d > 0.3:
+            risk_buckets["medium_90d"].append(customer_risk_data)
+        else:
+            risk_buckets["low_risk"].append(customer_risk_data)
+
+    # Calculate revenue at risk
+    revenue_at_risk = {
+        "critical_30d": sum(c["mrr"] for c in risk_buckets["critical_30d"]),
+        "high_60d": sum(c["mrr"] for c in risk_buckets["high_60d"]),
+        "medium_90d": sum(c["mrr"] for c in risk_buckets["medium_90d"]),
+    }
+
+    return {
+        "risk_distribution": {k: len(v) for k, v in risk_buckets.items()},
+        "risk_details": risk_buckets,
+        "revenue_at_risk": revenue_at_risk,
+        "total_revenue_at_risk": sum(revenue_at_risk.values()),
+        "prediction_insights": {
+            "highest_risk_customer": max(
+                customers_with_health, key=lambda x: x.get("churn_probability_30d", 0)
+            )["name"],
+            "most_stable_customer": min(
+                customers_with_health, key=lambda x: x.get("churn_probability_90d", 1)
+            )["name"],
+            "avg_churn_probability_30d": round(
+                sum(c.get("churn_probability_30d", 0) for c in customers_with_health)
+                / len(customers_with_health),
+                2,
+            ),
+        },
+    }
+
+
+@app.get("/analytics/revenue-intelligence")
+async def get_revenue_intelligence():
+    """Revenue Intelligence - Expansion and growth opportunities"""
+    customers_with_health = []
+
+    for customer_data in MOCK_CUSTOMERS:
+        health_score = calculate_health_score(customer_data)
+        customer_with_health = {**customer_data, "health_score": health_score}
+        customers_with_health.append(customer_with_health)
+
+    # Expansion opportunities analysis
+    expansion_ready = []
+    upsell_candidates = []
+    cross_sell_opportunities = []
+
+    for customer in customers_with_health:
+        expansion_score = customer.get("expansion_score", 0)
+        upsell_readiness = customer.get("upsell_readiness", 0)
+        cross_sell_potential = customer.get("cross_sell_potential", [])
+
+        customer_revenue_data = {
+            "id": customer["id"],
+            "name": customer["name"],
+            "current_mrr": customer["mrr"],
+            "expansion_score": expansion_score,
+            "upsell_readiness": upsell_readiness,
+            "cross_sell_potential": cross_sell_potential,
+            "revenue_growth_trend": customer.get("revenue_growth_trend", 0),
+            "ltv_prediction": customer.get("ltv_prediction", 0),
+            "health_score": customer["health_score"],
+        }
+
+        # High expansion potential (>0.7 expansion score)
+        if expansion_score > 0.7:
+            expansion_ready.append(customer_revenue_data)
+
+        # High upsell readiness (>0.6 upsell score)
+        if upsell_readiness > 0.6:
+            upsell_candidates.append(customer_revenue_data)
+
+        # Has cross-sell opportunities
+        if cross_sell_potential:
+            cross_sell_opportunities.append(customer_revenue_data)
+
+    # Calculate potential revenue impact
+    expansion_revenue_potential = sum(
+        c["current_mrr"] * c["expansion_score"] for c in expansion_ready
+    )
+    upsell_revenue_potential = sum(
+        c["current_mrr"] * c["upsell_readiness"] * 0.3 for c in upsell_candidates
+    )  # Assume 30% upsell
+
+    return {
+        "expansion_opportunities": {
+            "high_potential": expansion_ready,
+            "count": len(expansion_ready),
+            "revenue_potential": round(expansion_revenue_potential, 0),
+        },
+        "upsell_candidates": {
+            "ready_customers": upsell_candidates,
+            "count": len(upsell_candidates),
+            "revenue_potential": round(upsell_revenue_potential, 0),
+        },
+        "cross_sell_opportunities": {
+            "customers_with_potential": cross_sell_opportunities,
+            "count": len(cross_sell_opportunities),
+            "popular_products": [
+                "analytics",
+                "api",
+                "training",
+                "integrations",
+                "premium_support",
+            ],
+        },
+        "revenue_insights": {
+            "total_current_mrr": sum(c["mrr"] for c in customers_with_health),
+            "total_ltv_prediction": sum(
+                c.get("ltv_prediction", 0) for c in customers_with_health
+            ),
+            "avg_revenue_growth": round(
+                sum(c.get("revenue_growth_trend", 0) for c in customers_with_health)
+                / len(customers_with_health),
+                2,
+            ),
+            "expansion_revenue_potential": round(
+                expansion_revenue_potential + upsell_revenue_potential, 0
+            ),
+        },
+    }
+
+
+@app.get("/customers/{customer_id}/journey")
+async def get_customer_journey_details(customer_id: int):
+    """Get detailed journey information for a specific customer"""
+    customer_data = next((c for c in MOCK_CUSTOMERS if c["id"] == customer_id), None)
+    if not customer_data:
+        return {"error": "Customer not found"}
+
+    health_score = calculate_health_score(customer_data)
+
+    return {
+        "customer_id": customer_id,
+        "customer_name": customer_data["name"],
+        "current_stage": customer_data.get("lifecycle_stage", "unknown"),
+        "days_in_current_stage": customer_data.get("days_in_stage", 0),
+        "previous_stage": customer_data.get("previous_stage", "unknown"),
+        "journey_velocity": customer_data.get("journey_velocity", 0),
+        "time_to_value": customer_data.get("time_to_value_days", 0),
+        "health_score": health_score,
+        "risk_prediction": {
+            "30_day_churn_risk": customer_data.get("churn_probability_30d", 0),
+            "60_day_churn_risk": customer_data.get("churn_probability_60d", 0),
+            "90_day_churn_risk": customer_data.get("churn_probability_90d", 0),
+            "risk_factors": customer_data.get("risk_factors", []),
+            "risk_trend": customer_data.get("risk_trend", "stable"),
+        },
+        "revenue_intelligence": {
+            "expansion_score": customer_data.get("expansion_score", 0),
+            "upsell_readiness": customer_data.get("upsell_readiness", 0),
+            "cross_sell_potential": customer_data.get("cross_sell_potential", []),
+            "revenue_growth_trend": customer_data.get("revenue_growth_trend", 0),
+            "ltv_prediction": customer_data.get("ltv_prediction", 0),
+            "renewal_probability": customer_data.get("contract_renewal_probability", 0),
+        },
+    }

@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import CustomerList from './pages/CustomerList';
 import AlertsPage from './pages/AlertsPage';
 import ActionsPage from './pages/ActionsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 // Ant Design theme configuration
 const customTheme = {
@@ -61,6 +62,7 @@ function App() {
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/alerts" element={<AlertsPage />} />
                 <Route path="/actions" element={<ActionsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
               </Routes>
             </Layout>
           </Router>
