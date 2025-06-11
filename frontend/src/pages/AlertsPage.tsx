@@ -328,7 +328,7 @@ const AlertsPage: React.FC = () => {
       </Card>
 
       {/* Custom CSS for row highlighting */}
-      <style jsx>{`
+      <style>{`
         .critical-row {
           background-color: #fff2f0 !important;
           border-left: 4px solid #ff4d4f;

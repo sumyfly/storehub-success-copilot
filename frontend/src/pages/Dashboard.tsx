@@ -31,6 +31,7 @@ import {
 import { useQuery } from 'react-query';
 import { Column } from '@ant-design/charts';
 import { apiService, DashboardStats, Customer, Alert as AlertType } from '../services/api';
+import ActionCard from '../components/ActionCard';
 
 const { Title, Text } = Typography;
 
@@ -76,6 +77,14 @@ const Dashboard: React.FC = () => {
   const { data: trends } = useQuery(
     'trends',
     apiService.getHealthTrends
+  );
+
+  const { data: actionsDashboard } = useQuery(
+    'actionsDashboard',
+    async () => {
+      const response = await fetch('http://localhost:8000/dashboard/actions');
+      return response.json();
+    }
   );
 
   if (statsLoading || alertsLoading || customersLoading) {
@@ -222,12 +231,12 @@ const Dashboard: React.FC = () => {
           <Card>
             <Statistic
               title="Average Health Score"
-              value={stats?.average_health_score ? parseFloat(stats.average_health_score) * 100 : 0}
+              value={stats?.average_health_score ? stats.average_health_score * 100 : 0}
               prefix={<TrophyOutlined />}
               suffix="%"
               precision={1}
               valueStyle={{ 
-                color: (stats?.average_health_score ? parseFloat(stats.average_health_score) : 0) > 0.7 ? '#52c41a' : '#faad14' 
+                color: (stats?.average_health_score ? stats.average_health_score : 0) > 0.7 ? '#52c41a' : '#faad14' 
               }}
             />
           </Card>
@@ -243,7 +252,7 @@ const Dashboard: React.FC = () => {
               xField="range"
               yField="count"
               columnStyle={{
-                fill: ({ range }) => {
+                fill: ({ range }: any) => {
                   if (range.includes('Excellent')) return '#52c41a';
                   if (range.includes('Good')) return '#1890ff';
                   if (range.includes('At Risk')) return '#faad14';
@@ -319,7 +328,7 @@ const Dashboard: React.FC = () => {
               columns={alertColumns}
               pagination={false}
               size="small"
-              rowKey={(record, index) => index || 0}
+              rowKey={(record, index) => `alert-${index || 0}`}
             />
           </Card>
         </Col>
@@ -334,48 +343,65 @@ const Dashboard: React.FC = () => {
               columns={riskColumns}
               pagination={false}
               size="small"
-              rowKey="id"
+              rowKey={(record) => record.id.toString()}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* Action Items */}
+      {/* Recommended Actions */}
       <Row style={{ marginTop: 24 }}>
         <Col span={24}>
-          <Card title="Recommended Actions" extra={<ClockCircleOutlined />}>
-            <List
-              dataSource={[
-                {
-                  title: 'Schedule urgent calls with critical risk customers',
-                  description: `${customers?.filter(c => c.health_score < 0.3).length || 0} customers need immediate attention`,
-                  priority: 'high',
-                },
-                {
-                  title: 'Review customers with declining usage',
-                  description: 'Proactive outreach to prevent churn',
-                  priority: 'medium',
-                },
-                {
-                  title: 'Analyze support ticket trends',
-                  description: 'Identify common issues affecting customer health',
-                  priority: 'low',
-                },
-              ]}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={
-                      <Badge 
-                        status={item.priority === 'high' ? 'error' : item.priority === 'medium' ? 'warning' : 'processing'} 
-                      />
-                    }
-                    title={item.title}
-                    description={item.description}
-                  />
-                </List.Item>
-              )}
-            />
+          <Card 
+            title="🎯 Top Priority Actions Today" 
+            extra={
+              <Space>
+                <Badge 
+                  count={actionsDashboard?.summary?.critical_actions || 0} 
+                  style={{ backgroundColor: '#ff4d4f' }}
+                />
+                <ClockCircleOutlined />
+              </Space>
+            }
+          >
+            {actionsDashboard?.top_actions_today?.length > 0 ? (
+              <Row gutter={[16, 16]}>
+                {actionsDashboard.top_actions_today.slice(0, 4).map((action: any, index: number) => (
+                  <Col xs={24} lg={12} key={action.id || index}>
+                    <ActionCard
+                      action={action}
+                      compact={true}
+                      onExecute={(actionId) => {
+                        console.log('Execute action:', actionId);
+                        // TODO: Add action execution logic
+                      }}
+                      onViewDetails={(actionId) => {
+                        console.log('View action details:', actionId);
+                        // TODO: Add action details modal
+                      }}
+                    />
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <Alert
+                message="No urgent actions today"
+                description="All customers are healthy and no immediate actions are required."
+                type="success"
+                showIcon
+                style={{ textAlign: 'center' }}
+              />
+            )}
+            
+            {actionsDashboard?.summary?.total_recommendations > 4 && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <Text type="secondary">
+                  Showing 4 of {actionsDashboard.summary.total_recommendations} recommendations
+                </Text>
+                <br />
+                <a href="/actions">View all action recommendations →</a>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>

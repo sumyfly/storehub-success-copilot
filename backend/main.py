@@ -1,5 +1,7 @@
 from typing import List
 
+from action_templates import ACTION_CATEGORIES, ACTION_TEMPLATES
+
 # Import alert intelligence
 from alert_intelligence import AlertIntelligence
 from analytics_engine import AnalyticsEngine
@@ -19,6 +21,12 @@ from mock_data import MOCK_CUSTOMERS
 from models import Alert, Customer
 from notification_engine import NotificationEngine
 from priority_queue_manager import PriorityQueueManager
+
+# Import new recommendation engine
+from recommendation_engine import (
+    get_recommendations_for_customer,
+    get_recommendations_summary,
+)
 from workflow_engine import WorkflowEngine
 
 app = FastAPI(title="Customer Success Copilot", version="0.1.0")
@@ -217,7 +225,7 @@ async def get_health_trends():
 
 @app.get("/recommendations/{customer_id}")
 async def get_customer_recommendations(customer_id: int):
-    """Get action recommendations for a specific customer"""
+    """Get intelligent action recommendations for a specific customer"""
     customer_data = next((c for c in MOCK_CUSTOMERS if c["id"] == customer_id), None)
     if not customer_data:
         return {"error": "Customer not found"}
@@ -225,11 +233,147 @@ async def get_customer_recommendations(customer_id: int):
     health_score = calculate_health_score(customer_data)
     customer_with_health = {**customer_data, "health_score": health_score}
 
+    # Get intelligent recommendations
+    intelligent_recommendations = get_recommendations_for_customer(customer_with_health)
+
+    # Get current alerts for context
+    current_alerts = generate_alerts(customer_with_health)
+
     return {
         "customer_id": customer_id,
         "customer_name": customer_data["name"],
         "current_health": health_score,
-        "recommendations": recommend_actions(customer_with_health),
+        "risk_level": "critical"
+        if health_score < 0.3
+        else "medium"
+        if health_score < 0.6
+        else "healthy",
+        "total_recommendations": len(intelligent_recommendations),
+        "recommendations": intelligent_recommendations,
+        "current_alerts": current_alerts,
+        "last_updated": "2024-01-15T10:30:00Z",
+    }
+
+
+@app.get("/actions/templates")
+async def get_action_templates():
+    """Get all available action templates organized by category"""
+    return {
+        "templates": ACTION_TEMPLATES,
+        "categories": ACTION_CATEGORIES,
+        "total_templates": len(ACTION_TEMPLATES),
+    }
+
+
+@app.get("/recommendations/summary")
+async def get_recommendations_summary_endpoint():
+    """Get summary of recommendations across all customers"""
+    # Get all customers with health scores
+    customers_with_health = []
+    for customer_data in MOCK_CUSTOMERS:
+        health_score = calculate_health_score(customer_data)
+        customer_with_health = {**customer_data, "health_score": health_score}
+        customers_with_health.append(customer_with_health)
+
+    # Get recommendations summary
+    summary = get_recommendations_summary(customers_with_health)
+
+    return {
+        "summary": summary,
+        "total_customers_analyzed": len(customers_with_health),
+        "generated_at": "2024-01-15T10:30:00Z",
+    }
+
+
+@app.post("/actions/{action_id}/execute")
+async def execute_action(action_id: str, customer_id: int, csm_id: str = "default_csm"):
+    """Execute a specific action for a customer"""
+    # Find the action template
+    action_template = ACTION_TEMPLATES.get(action_id)
+    if not action_template:
+        return {"error": "Action template not found"}
+
+    # Find customer
+    customer_data = next((c for c in MOCK_CUSTOMERS if c["id"] == customer_id), None)
+    if not customer_data:
+        return {"error": "Customer not found"}
+
+    # Simulate action execution
+    execution_result = {
+        "action_id": action_id,
+        "action_title": action_template["title"],
+        "customer_id": customer_id,
+        "customer_name": customer_data["name"],
+        "csm_id": csm_id,
+        "status": "executed",
+        "execution_time": "2024-01-15T10:30:00Z",
+        "estimated_completion": action_template.get("timeline", "Unknown"),
+        "success_probability": action_template.get("success_rate", 0) * 100,
+        "next_steps": action_template.get("steps", []),
+    }
+
+    return execution_result
+
+
+@app.get("/dashboard/actions")
+async def get_actions_dashboard():
+    """Get dashboard view of all recommended actions across customers"""
+    all_recommendations = []
+
+    # Get recommendations for all customers
+    for customer_data in MOCK_CUSTOMERS:
+        health_score = calculate_health_score(customer_data)
+        customer_with_health = {**customer_data, "health_score": health_score}
+        customer_recs = get_recommendations_for_customer(customer_with_health)
+        all_recommendations.extend(customer_recs)
+
+    # Organize by urgency
+    critical_actions = [
+        r for r in all_recommendations if r.get("urgency") == "critical"
+    ]
+    high_priority = [r for r in all_recommendations if r.get("urgency") == "high"]
+    medium_priority = [r for r in all_recommendations if r.get("urgency") == "medium"]
+
+    # Organize by category
+    retention_actions = [
+        r for r in all_recommendations if r.get("category") == "retention"
+    ]
+    engagement_actions = [
+        r for r in all_recommendations if r.get("category") == "engagement"
+    ]
+    expansion_actions = [
+        r for r in all_recommendations if r.get("category") == "expansion"
+    ]
+    support_actions = [r for r in all_recommendations if r.get("category") == "support"]
+
+    return {
+        "summary": {
+            "total_recommendations": len(all_recommendations),
+            "critical_actions": len(critical_actions),
+            "high_priority_actions": len(high_priority),
+            "medium_priority_actions": len(medium_priority),
+        },
+        "by_urgency": {
+            "critical": critical_actions[:5],  # Top 5 most critical
+            "high": high_priority[:5],
+            "medium": medium_priority[:5],
+        },
+        "by_category": {
+            "retention": len(retention_actions),
+            "engagement": len(engagement_actions),
+            "expansion": len(expansion_actions),
+            "support": len(support_actions),
+        },
+        "top_actions_today": sorted(
+            all_recommendations,
+            key=lambda x: (
+                {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(
+                    x.get("urgency", "low"), 1
+                ),
+                x.get("success_rate", 0),
+            ),
+            reverse=True,
+        )[:10],
     }
 
 

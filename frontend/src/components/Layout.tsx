@@ -4,6 +4,7 @@ import {
   DashboardOutlined,
   TeamOutlined,
   AlertOutlined,
+  ThunderboltOutlined,
   BellOutlined,
   UserOutlined,
   SettingOutlined,
@@ -32,6 +33,7 @@ const navigationItems: NavigationItem[] = [
   { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard', path: '/' },
   { key: 'customers', icon: <TeamOutlined />, label: 'Customers', path: '/customers' },
   { key: 'alerts', icon: <AlertOutlined />, label: 'Alerts', path: '/alerts' },
+  { key: 'actions', icon: <ThunderboltOutlined />, label: 'Actions', path: '/actions' },
 ];
 
 export default function Layout({ children }: Props) {
