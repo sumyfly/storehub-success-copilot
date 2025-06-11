@@ -1,0 +1,16 @@
+[project]
+name = "customer-success-etl"
+version = "1.0.0"
+description = "ETL Pipeline for Customer Success Health Score Calculation"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[tool.setuptools]
+packages = []
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta" 

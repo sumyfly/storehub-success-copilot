@@ -1,0 +1,250 @@
+# ETL数据源结构定义
+# 确保字段覆盖Health Score计算的8个维度
+
+customers:
+  description: "客户基础信息和静态属性"
+  file: "customers.csv"
+  health_score_dimensions: ["engagement", "payment", "satisfaction", "lifecycle", "value"]
+  fields:
+    - field: customer_id
+      type: string
+      description: "客户唯一标识"
+      required: true
+    - field: name
+      type: string
+      description: "客户公司名称"
+      required: true
+    - field: customer_type
+      type: string
+      values: ["enterprise", "mid_market", "startup"]
+      description: "客户类型，影响Health Score权重"
+      required: true
+    - field: industry
+      type: string
+      description: "客户所属行业"
+      required: true
+    - field: company_size
+      type: string
+      values: ["small", "medium", "large"]
+      description: "公司规模"
+      required: true
+    - field: contract_date
+      type: date
+      format: "YYYY-MM-DD"
+      description: "合同签署日期 (lifecycle维度)"
+      required: true
+    - field: contract_length_months
+      type: integer
+      description: "合同期长度，月数 (lifecycle维度)"
+      required: true
+    - field: payment_status
+      type: string
+      values: ["current", "late", "overdue", "failed"]
+      description: "付款状态 (payment维度)"
+      required: true
+    - field: nps_score
+      type: integer
+      range: [0, 10]
+      description: "NPS评分 (satisfaction维度)"
+      required: true
+    - field: onboarding_completed
+      type: boolean
+      description: "入职是否完成 (engagement维度)"
+      required: true
+
+sales:
+  description: "销售交易和收入数据"
+  file: "sales.csv"
+  health_score_dimensions: ["payment", "value"]
+  fields:
+    - field: transaction_id
+      type: string
+      description: "交易唯一标识"
+      required: true
+    - field: customer_id
+      type: string
+      description: "客户ID，关联customers表"
+      required: true
+    - field: deal_date
+      type: date
+      format: "YYYY-MM-DD"
+      description: "交易日期"
+      required: true
+    - field: deal_amount
+      type: float
+      description: "交易金额 (value维度)"
+      required: true
+    - field: deal_type
+      type: string
+      values: ["new", "renewal", "expansion", "upsell"]
+      description: "交易类型"
+      required: true
+    - field: deal_stage
+      type: string
+      values: ["closed_won", "closed_lost", "pending"]
+      description: "交易状态"
+      required: true
+    - field: mrr
+      type: float
+      description: "月度经常性收入 (value维度)"
+      required: true
+    - field: account_manager
+      type: string
+      description: "客户经理"
+      required: false
+    - field: product_type
+      type: string
+      description: "产品类型"
+      required: true
+
+support:
+  description: "客户支持和服务数据"
+  file: "support.csv"
+  health_score_dimensions: ["support", "satisfaction"]
+  fields:
+    - field: ticket_id
+      type: string
+      description: "工单唯一标识"
+      required: true
+    - field: customer_id
+      type: string
+      description: "客户ID，关联customers表"
+      required: true
+    - field: created_date
+      type: datetime
+      format: "YYYY-MM-DD HH:mm:ss"
+      description: "工单创建时间"
+      required: true
+    - field: resolved_date
+      type: datetime
+      format: "YYYY-MM-DD HH:mm:ss"
+      description: "工单解决时间"
+      required: false
+    - field: priority
+      type: string
+      values: ["low", "medium", "high", "critical"]
+      description: "工单优先级 (support维度)"
+      required: true
+    - field: category
+      type: string
+      values: ["technical", "billing", "training", "feature_request", "bug"]
+      description: "工单类别"
+      required: true
+    - field: satisfaction_score
+      type: integer
+      range: [1, 5]
+      description: "支持满意度评分 (satisfaction维度)"
+      required: false
+    - field: agent_id
+      type: string
+      description: "处理工程师ID"
+      required: false
+    - field: resolution_time_hours
+      type: float
+      description: "解决时长，小时 (support维度)"
+      required: false
+
+activity:
+  description: "用户行为和产品使用数据"
+  file: "activity.csv"  
+  health_score_dimensions: ["usage", "engagement", "adoption"]
+  fields:
+    - field: activity_id
+      type: string
+      description: "活动唯一标识"
+      required: true
+    - field: customer_id
+      type: string
+      description: "客户ID，关联customers表"
+      required: true
+    - field: date
+      type: date
+      format: "YYYY-MM-DD"
+      description: "活动日期"
+      required: true
+    - field: activity_type
+      type: string
+      values: ["login", "feature_usage", "training_completed", "report_generated", "api_call", "integration_setup"]
+      description: "活动类型 (usage, engagement, adoption维度)"
+      required: true
+    - field: feature_name
+      type: string
+      description: "使用的功能名称 (adoption维度)"
+      required: false
+    - field: feature_category
+      type: string
+      values: ["core", "advanced", "integrations"]
+      description: "功能类别 (adoption维度)"
+      required: false
+    - field: user_count
+      type: integer
+      description: "参与用户数量 (engagement维度)"
+      required: true
+    - field: session_duration_minutes
+      type: float
+      description: "会话时长，分钟 (usage维度)"
+      required: false
+    - field: activity_value
+      type: string
+      description: "活动具体值或描述"
+      required: false
+
+# Health Score维度与数据源映射
+health_score_mapping:
+  usage:
+    primary_source: "activity"
+    calculation: "基于登录频率、会话时长、功能使用深度"
+    key_fields: ["activity_type", "session_duration_minutes", "date"]
+    
+  engagement:
+    primary_source: "activity"
+    secondary_source: "customers"
+    calculation: "参与度分数 + 入职完成奖励"
+    key_fields: ["user_count", "onboarding_completed", "activity_type"]
+    
+  support:
+    primary_source: "support"
+    calculation: "工单数量、优先级、解决效率"
+    key_fields: ["priority", "resolution_time_hours", "ticket_id"]
+    
+  payment:
+    primary_source: "customers"
+    secondary_source: "sales"
+    calculation: "付款状态 + 续费记录"
+    key_fields: ["payment_status", "deal_type"]
+    
+  adoption:
+    primary_source: "activity"
+    calculation: "核心/高级/集成功能使用率"
+    key_fields: ["feature_category", "feature_name", "activity_type"]
+    
+  satisfaction:
+    primary_source: "customers"
+    secondary_source: "support"
+    calculation: "NPS分数 + 支持满意度"
+    key_fields: ["nps_score", "satisfaction_score"]
+    
+  lifecycle:
+    primary_source: "customers"
+    calculation: "合同期限 + 客户成熟度"
+    key_fields: ["contract_date", "contract_length_months"]
+    
+  value:
+    primary_source: "sales"
+    calculation: "MRR + 合同价值"
+    key_fields: ["mrr", "deal_amount"]
+
+# 数据生成参数
+generation_params:
+  total_customers: 30
+  customer_distribution:
+    enterprise: 10
+    mid_market: 15
+    startup: 5
+  time_range:
+    start_date: "2023-07-01"
+    end_date: "2024-01-20"
+  data_density:
+    sales_per_customer: 3
+    support_tickets_per_customer_per_month: 1
+    activity_records_per_customer_per_day: 2 
