@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:13
+    container_name: cs-copilot-postgres
+    environment:
+      POSTGRES_DB: customer_success
+      POSTGRES_USER: cs_user
+      POSTGRES_PASSWORD: cs_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/setup/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cs_user -d customer_success"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:6-alpine
+    container_name: cs-copilot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Data Processing
+  airflow-postgres:
+    image: postgres:13
+    container_name: cs-copilot-airflow-db
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+
+  airflow-webserver:
+    image: apache/airflow:2.7.1
+    container_name: cs-copilot-airflow-webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data-pipeline/dags:/opt/airflow/dags
+      - ./data-pipeline/tasks:/opt/airflow/tasks
+      - ./data-pipeline/configs:/opt/airflow/configs
+    depends_on:
+      - airflow-postgres
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.1
+    container_name: cs-copilot-airflow-scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes:
+      - ./data-pipeline/dags:/opt/airflow/dags
+      - ./data-pipeline/tasks:/opt/airflow/tasks
+      - ./data-pipeline/configs:/opt/airflow/configs
+    depends_on:
+      - airflow-postgres
+    command: scheduler
+
+  # Object Storage (MinIO for local S3 compatibility)
+  minio:
+    image: minio/minio:latest
+    container_name: cs-copilot-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MLflow Tracking Server
+  mlflow:
+    image: python:3.9-slim
+    container_name: cs-copilot-mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+    volumes:
+      - ./ml-platform:/app
+      - mlflow_data:/mlflow
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install mlflow boto3 psycopg2-binary &&
+        mlflow server 
+          --backend-store-uri postgresql://cs_user:cs_password@postgres/customer_success
+          --default-artifact-root s3://mlflow-artifacts/
+          --host 0.0.0.0
+          --port 5000
+      "
+    depends_on:
+      - postgres
+      - minio
+
+  # Jupyter Notebook for ML Development
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: cs-copilot-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+      JUPYTER_TOKEN: "your-jupyter-token"
+    volumes:
+      - ./ml-platform:/home/jovyan/work
+      - jupyter_data:/home/jovyan
+    command: start-notebook.sh --NotebookApp.token='your-jupyter-token'
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cs-copilot-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cs-copilot-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  redis_data:
+  airflow_postgres_data:
+  minio_data:
+  mlflow_data:
+  jupyter_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: cs-copilot-network 
